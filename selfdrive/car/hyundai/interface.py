@@ -216,17 +216,13 @@ class CarInterface(CarInterfaceBase):
         ret.steerRatio = 24
         ret.mass = 1737. + STD_CARGO_KG
       else:
-          #https://kzread.info/dash/op-hkg-community-0-7-6-various-roads-raw-kia-e-niro/eIGNmdZydsLQnKg.html
-          ret.lateralTuning.init('indi')
-          ret.lateralTuning.indi.innerLoopGain = 5 #5.5
-          ret.lateralTuning.indi.outerLoopGain = 4.85 #4.5
-          ret.lateralTuning.indi.timeConstant = 2.088 #1.0
-          ret.lateralTuning.indi.actuatorEffectiveness = 2.034 #1.76
-          #ret.lateralTuning.pid.kf = 0.00005
-          ret.mass = 1737. + STD_CARGO_KG #1500. + STD_CARGO_KG
-          ret.steerRatio = 24 #Spec 13.73
-          ret.steerActuatorDelay = 0.28 #new
-          ret.steerLimitTimer = 0.1 #new
+        ret.lateralTuning.init('indi')
+        ret.lateralTuning.indi.innerLoopGain = 5.5
+        ret.lateralTuning.indi.outerLoopGain = 4.5
+        ret.lateralTuning.indi.timeConstant = 1.0
+        ret.lateralTuning.indi.actuatorEffectiveness = 1.76
+        ret.steerRatio = 24
+        ret.mass = 1500. + STD_CARGO_KG
       ret.wheelbase = 2.7
       tire_stiffness_factor = 0.385
     elif candidate in [CAR.CADENZA, CAR.CADENZA_HEV]:
@@ -261,7 +257,7 @@ class CarInterface(CarInterfaceBase):
 
     # steer, gas, brake limitations VS speed
     ret.steerMaxBP = [0.]
-    ret.steerMaxV = [9.0] # [1.0]
+    ret.steerMaxV = [1.0]
     ret.gasMaxBP = [0., 10., 40.]
     ret.gasMaxV = [0.5, 0.5, 0.5]
     ret.brakeMaxBP = [0., 20.]
