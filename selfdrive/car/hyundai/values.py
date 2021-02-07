@@ -365,6 +365,23 @@ FW_VERSIONS = {
       b'\xf1\x00DEE MFC  AT USA LHD 1.00 1.03 95740-Q4000 180821',
       b'\xf1\x00DEE MFC  AT EUR LHD 1.00 1.00 99211-Q4000 191211',
     ],
+  },CAR.KIA_NIRO_HEV: {
+    (Ecu.fwdRadar, 0x7D0, None): [
+      b'\xf1\x00DEev SCC F-CUP      1.00 1.03 96400-Q4100         \xf1\xa01.03',
+      b'\xf1\x00DEev SCC F-CUP      1.00 1.00 99110-Q4000         \xf1\xa01.00',
+    ],
+    (Ecu.esp, 0x7D1, None): [
+      b'\xf1\xa01.06',
+      b'\xf1\xa01.07',
+    ],
+    (Ecu.eps, 0x7D4, None): [
+      b'\xf1\x00DE  MDPS C 1.00 1.05 56310Q4000\x00 4DEEC105',
+      b'\xf1\x00DE  MDPS C 1.00 1.05 56310Q4100\x00 4DEEC105',
+    ],
+    (Ecu.fwdCamera, 0x7C4, None): [
+      b'\xf1\x00DEE MFC  AT USA LHD 1.00 1.03 95740-Q4000 180821',
+      b'\xf1\x00DEE MFC  AT EUR LHD 1.00 1.00 99211-Q4000 191211',
+    ],
   },
   CAR.KIA_OPTIMA: {
     (Ecu.fwdRadar, 0x7d0, None): [b'\xf1\x00JF__ SCC F-CUP      1.00 1.00 96400-D4110         '],
@@ -388,14 +405,14 @@ FEATURES = {
   "use_elect_gears": set([CAR.KIA_NIRO_EV, CAR.KIA_OPTIMA_H, CAR.IONIQ_EV_LTD, CAR.KONA_EV, CAR.IONIQ, CAR.IONIQ_EV_2020]),
 
   # these cars use the FCA11 message for the AEB and FCW signals, all others use SCC12
-  "use_fca": set([CAR.SONATA, CAR.ELANTRA, CAR.ELANTRA_GT_I30, CAR.KIA_STINGER, CAR.IONIQ, CAR.IONIQ_EV_2020, CAR.KONA_EV, CAR.KIA_FORTE, CAR.KIA_NIRO_EV, CAR.PALISADE, CAR.GENESIS_G70, CAR.KONA, CAR.SANTA_FE]),
+  "use_fca": set([CAR.SONATA, CAR.ELANTRA, CAR.ELANTRA_GT_I30, CAR.KIA_STINGER, CAR.IONIQ, CAR.IONIQ_EV_2020, CAR.KONA_EV, CAR.KIA_FORTE, CAR.KIA_NIRO_EV, CAR.KIA_NIRO_HEV, CAR.PALISADE, CAR.GENESIS_G70, CAR.KONA, CAR.SANTA_FE]),
 
   "use_bsm": set([CAR.SONATA, CAR.PALISADE, CAR.HYUNDAI_GENESIS, CAR.GENESIS_G70,
                   CAR.GENESIS_G80, CAR.GENESIS_G90, CAR.KONA, CAR.IONIQ_EV_2020,
-                  CAR.SANTA_FE, CAR.KIA_NIRO_EV]),
+                  CAR.SANTA_FE, CAR.KIA_NIRO_EV], CAR.KIA_NIRO_HEV]),
 }
 
-EV_HYBRID = set([CAR.IONIQ_EV_2020, CAR.IONIQ_EV_LTD, CAR.IONIQ, CAR.KONA_EV, CAR.KIA_NIRO_EV])
+EV_HYBRID = set([CAR.IONIQ_EV_2020, CAR.IONIQ_EV_LTD, CAR.IONIQ, CAR.KONA_EV, CAR.KIA_NIRO_EV, CAR.KIA_NIRO_HEV])
 
 DBC = {
   CAR.ELANTRA: dbc_dict('hyundai_kia_generic', None),
