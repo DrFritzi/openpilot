@@ -383,7 +383,7 @@ CHECKSUM = {
 
 FEATURES = {
   # which message has the gear
-  "use_cluster_gears": set([CAR.ELANTRA, CAR.ELANTRA_GT_I30, CAR.KONA, CAR.NIRO_HEV]),
+  "use_cluster_gears": set([CAR.ELANTRA, CAR.ELANTRA_GT_I30, CAR.KONA, CAR.KIA_NIRO_HEV]),
   "use_tcu_gears": set([CAR.KIA_OPTIMA, CAR.SONATA_LF, CAR.VELOSTER]),
   "use_elect_gears": set([CAR.KIA_NIRO_EV, CAR.KIA_OPTIMA_H, CAR.IONIQ_EV_LTD, CAR.KONA_EV, CAR.IONIQ, CAR.IONIQ_EV_2020]),
 
