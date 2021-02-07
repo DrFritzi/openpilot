@@ -121,14 +121,24 @@ class CarInterface(CarInterfaceBase):
       ret.steerRatio = 14.4 * 1.1   # 10% higher at the center seems reasonable
       ret.lateralTuning.pid.kiBP, ret.lateralTuning.pid.kpBP = [[0.], [0.]]
       ret.lateralTuning.pid.kpV, ret.lateralTuning.pid.kiV = [[0.25], [0.05]]
-    elif candidate == CAR.KIA_NIRO_EV:
-      ret.lateralTuning.pid.kf = 0.00006
-      ret.mass = 1737. + STD_CARGO_KG
-      ret.wheelbase = 2.7
-      ret.steerRatio = 13.73  # Spec
-      tire_stiffness_factor = 0.385
-      ret.lateralTuning.pid.kiBP, ret.lateralTuning.pid.kpBP = [[0.], [0.]]
-      ret.lateralTuning.pid.kpV, ret.lateralTuning.pid.kiV = [[0.25], [0.05]]
+    elif candidate in [CAR.NIRO_HEV, CAR.NIRO_EV]:
+      if candidate == CAR.NIRO_EV:
+        ret.lateralTuning.init('indi')
+        ret.lateralTuning.indi.innerLoopGain = 5.5
+        ret.lateralTuning.indi.outerLoopGain = 4.5
+        ret.lateralTuning.indi.timeConstant = 1.0
+        ret.lateralTuning.indi.actuatorEffectiveness = 1.76
+        ret.steerRatio = 24
+        ret.mass = 1737. + STD_CARGO_KG
+      else:
+        ret.lateralTuning.init('indi')
+        ret.lateralTuning.indi.innerLoopGain = 5.5 #5.2 -> slopy curves
+        ret.lateralTuning.indi.outerLoopGain = 4.5
+        ret.lateralTuning.indi.timeConstant = 1.0
+        ret.lateralTuning.indi.actuatorEffectiveness = 1.76 #1.85 -> more ping pong on straights | 1.70 -> worse curve behaviour?
+        ret.steerActuatorDelay = 0.08 #default -> cuts curves | 0.08 -> cuts curves very little
+        ret.steerRatio = 24
+        ret.mass = 1500. + STD_CARGO_KG
     elif candidate in [CAR.KIA_OPTIMA, CAR.KIA_OPTIMA_H]:
       ret.lateralTuning.pid.kf = 0.00005
       ret.mass = 3558. * CV.LB_TO_KG
