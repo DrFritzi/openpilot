@@ -217,11 +217,11 @@ class CarInterface(CarInterfaceBase):
         ret.mass = 1737. + STD_CARGO_KG
       else:
         ret.lateralTuning.init('indi')
-        ret.lateralTuning.indi.innerLoopGain = 5.5
+        ret.lateralTuning.indi.innerLoopGain = 5.5 #5.2 -> slopy curves
         ret.lateralTuning.indi.outerLoopGain = 4.5
         ret.lateralTuning.indi.timeConstant = 1.0
-        ret.lateralTuning.indi.actuatorEffectiveness = 1.76
-        ret.steerActuatorDelay = 0.08
+        ret.lateralTuning.indi.actuatorEffectiveness = 1.76 #1.85 -> more ping pong on straights | 1.70 -> worse curve behaviour?
+        ret.steerActuatorDelay = 0.08 #default -> cuts curves | 0.08 -> cuts curves very little
         ret.steerRatio = 24
         ret.mass = 1500. + STD_CARGO_KG
       ret.wheelbase = 2.7
