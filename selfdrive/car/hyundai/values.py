@@ -222,8 +222,6 @@ FW_VERSIONS = {
   },
   CAR.KIA_NIRO_HEV: {
     (Ecu.eps, 0x7D4, None): [
-      b'\xf1\x00DE  MDPS C 1.00 1.05 56310Q4000\x00 4DEEC105',
-      b'\xf1\x00DE  MDPS C 1.00 1.05 56310Q4100\x00 4DEEC105',
       b'\xf1\x00DE  MDPS C 1.00 1.01 56310G5500\x00 4DEPC101',
     ],
   },
