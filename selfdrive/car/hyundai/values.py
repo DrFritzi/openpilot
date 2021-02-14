@@ -224,6 +224,9 @@ FW_VERSIONS = {
     (Ecu.eps, 0x7D4, None): [
       b'\xf1\x00DE  MDPS C 1.00 1.01 56310G5500\x00 4DEPC101',
     ],
+      (Ecu.engine, 0x7E0, None): [
+        b'\\xf1\x816H6F4051\x00\x00\x00\x00\x00\x00\x00\x00', #Added engine, since kona has the same engine
+      ],
   },
   CAR.KONA_EV: {
     (Ecu.eps, 0x7D4, None): [
