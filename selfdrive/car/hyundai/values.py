@@ -224,9 +224,9 @@ FW_VERSIONS = {
     (Ecu.eps, 0x7D4, None): [
       b'\xf1\x00DE  MDPS C 1.00 1.01 56310G5500\x00 4DEPC101',
     ],
-      (Ecu.engine, 0x7E0, None): [
-        b'\\xf1\x816H6F4051\x00\x00\x00\x00\x00\x00\x00\x00', #Added engine, since kona has the same engine
-      ],
+    (Ecu.engine, 0x7E0, None): [
+      b'\\xf1\x816H6F4051\x00\x00\x00\x00\x00\x00\x00\x00', #Added engine, since kona has the same engine
+    ],
   },
   CAR.KONA_EV: {
     (Ecu.eps, 0x7D4, None): [
@@ -276,10 +276,10 @@ FEATURES = {
   "use_tcu_gears": set([CAR.KIA_OPTIMA, CAR.SONATA_2019, CAR.VELOSTER]),
 
   # send LFA MFA message for new HKG models
-  "send_lfa_mfa": set([CAR.SONATA, CAR.PALISADE, CAR.SONATA_HEV, CAR.SANTA_FE, CAR.KIA_NIRO_EV, CAR.KONA_EV, CAR.KONA,
+  "send_lfa_mfa": set([CAR.SONATA, CAR.PALISADE, CAR.SONATA_HEV, CAR.SANTA_FE, CAR.KIA_NIRO_EV, CAR.KIA_NIRO_HEV, CAR.KONA_EV, CAR.KONA,
                        CAR.KONA_HEV, CAR.IONIQ_HEV, CAR.IONIQ_EV_LTD]),
 
-  "allow_high_steer": set([CAR.KONA, CAR.KONA_EV, CAR.KONA_HEV, CAR.KIA_NIRO_EV]),
+  "allow_high_steer": set([CAR.KONA, CAR.KONA_EV, CAR.KONA_HEV, CAR.KIA_NIRO_EV, CAR.KIA_NIRO_HEV]),
 }
 
 ELEC_VEH = set([CAR.IONIQ_EV_LTD, CAR.KONA_EV, CAR.KIA_NIRO_EV])
