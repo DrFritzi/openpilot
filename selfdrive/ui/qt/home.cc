@@ -122,7 +122,7 @@ void OffroadHome::refresh() {
     border: 1px solid;
     border-radius: 5px;
     font-size: 40px;
-    font-weight: bold;
+    font-weight: 500;
     background-color: #E22C2C;
   )");
   if (alerts_widget->updateAvailable) {
@@ -143,6 +143,8 @@ HomeWindow::HomeWindow(QWidget* parent) : QWidget(parent) {
   home = new OffroadHome();
   layout->addWidget(home, 0, 0);
   QObject::connect(glWindow, SIGNAL(offroadTransition(bool)), this, SLOT(setVisibility(bool)));
+  QObject::connect(glWindow, SIGNAL(offroadTransition(bool)), this, SIGNAL(offroadTransition(bool)));
+  QObject::connect(glWindow, SIGNAL(screen_shutoff()), this, SIGNAL(closeSettings()));
   QObject::connect(this, SIGNAL(openSettings()), home, SLOT(refresh()));
   setLayout(layout);
   setStyleSheet(R"(
@@ -158,7 +160,11 @@ void HomeWindow::setVisibility(bool offroad) {
 
 void HomeWindow::mousePressEvent(QMouseEvent* e) {
   UIState* ui_state = &glWindow->ui_state;
-
+  if (GLWindow::ui_state.started && GLWindow::ui_state.scene.frontview) {
+    Params().write_db_value("IsDriverViewEnabled", "0", 1);
+    return;
+  }
+  
   glWindow->wake();
 
   // Settings button click
@@ -240,8 +246,8 @@ void GLWindow::backlightUpdate() {
 
   if (!ui_state.awake) {
     brightness = 0;
+    emit screen_shutoff();
   }
-
   std::thread{set_backlight, brightness}.detach();
 }
 
@@ -276,9 +282,11 @@ void GLWindow::paintGL() {
 
     double cur_draw_t = millis_since_boot();
     double dt = cur_draw_t - prev_draw_t;
-    if (dt > 66){
+    if (dt > 66 && onroad){
       // warn on sub 15fps
+#ifdef QCOM2
       LOGW("slow frame(%llu) time: %.2f", ui_state.sm->frame, dt);
+#endif
     }
     prev_draw_t = cur_draw_t;
   }

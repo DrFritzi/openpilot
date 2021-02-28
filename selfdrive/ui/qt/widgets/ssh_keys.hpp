@@ -7,8 +7,8 @@
 #include <QPushButton>
 #include <QTimer>
 #include <QNetworkAccessManager>
-
-#include "widgets/input_field.hpp"
+#include <QStackedLayout>
+#include "input_field.hpp"
 
 class SSH : public QWidget {
   Q_OBJECT
@@ -17,18 +17,17 @@ public:
   explicit SSH(QWidget* parent = 0);
 
 private:
-  InputField* inputField;
   QStackedLayout* slayout;
-  QString usernameGitHub;
+  InputDialog* dialog;
   QNetworkAccessManager* manager;
+
+  QString usernameGitHub;
   QNetworkReply* reply;
   QTimer* networkTimer;
   bool aborted;
 
 signals:
   void closeSSHSettings();
-  void openKeyboard();
-  void closeKeyboard();
   void NoSSHAdded();
   void SSHAdded();
   void failedResponse(QString errorString);

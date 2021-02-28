@@ -10,7 +10,10 @@
 #include <QLabel>
 #include <QPixmap>
 
+#ifndef QCOM
 #include "networking.hpp"
+#endif
+
 #include "settings.hpp"
 #include "widgets/toggle.hpp"
 #include "widgets/offroad_alerts.hpp"
@@ -25,6 +28,7 @@ QFrame* horizontal_line(QWidget* parent = 0){
   line->setFixedHeight(2);
   return line;
 }
+
 QWidget* labelWidget(QString labelName, QString labelContent){
   QHBoxLayout* labelLayout = new QHBoxLayout;
   labelLayout->addWidget(new QLabel(labelName), 0, Qt::AlignLeft);
@@ -148,6 +152,14 @@ QWidget * device_panel() {
     device_layout->addWidget(labelWidget(QString::fromStdString(l.first), QString::fromStdString(l.second)), 0, Qt::AlignTop);
   }
 
+  QPushButton* dcam_view = new QPushButton("Driver camera view");
+  device_layout->addWidget(dcam_view, 0, Qt::AlignBottom);
+  device_layout->addWidget(horizontal_line(), Qt::AlignBottom);
+  QObject::connect(dcam_view, &QPushButton::released, [=]() {
+    Params().write_db_value("IsDriverViewEnabled", "1", 1);
+  });
+
+
   // TODO: show current calibration values
   QPushButton *clear_cal_btn = new QPushButton("Reset Calibration");
   device_layout->addWidget(clear_cal_btn, 0, Qt::AlignBottom);
@@ -224,10 +236,43 @@ QWidget * developer_panel() {
 }
 
 QWidget * network_panel(QWidget * parent) {
+#ifdef QCOM
+  QVBoxLayout *layout = new QVBoxLayout;
+  layout->setMargin(100);
+  layout->setSpacing(30);
+
+  // TODO: can probably use the ndk for this
+  // simple wifi + tethering buttons
+  std::vector<std::pair<const char*, const char*>> btns = {
+    {"Open WiFi Settings", "am start -n com.android.settings/.wifi.WifiPickerActivity \
+                            -a android.net.wifi.PICK_WIFI_NETWORK \
+                            --ez extra_prefs_show_button_bar true \
+                            --es extra_prefs_set_next_text ''"},
+    {"Open Tethering Settings", "am start -n com.android.settings/.TetherSettings \
+                                 --ez extra_prefs_show_button_bar true \
+                                 --es extra_prefs_set_next_text ''"},
+  };
+  for (auto &b : btns) {
+    QPushButton *btn = new QPushButton(b.first);
+    layout->addWidget(btn, 0, Qt::AlignTop);
+    QObject::connect(btn, &QPushButton::released, [=]() { std::system(b.second); });
+  }
+  layout->addStretch(1);
+
+  QWidget *w = new QWidget;
+  w->setLayout(layout);
+  w->setStyleSheet(R"(
+    QPushButton {
+      padding: 0;
+      height: 120px;
+      border-radius: 15px;
+      background-color: #393939;
+    }
+  )");
+
+#else
   Networking *w = new Networking(parent);
-  QObject::connect(parent, SIGNAL(sidebarPressed()), w, SLOT(sidebarChange()));
-  QObject::connect(w, SIGNAL(openKeyboard()), parent, SLOT(closeSidebar()));
-  QObject::connect(w, SIGNAL(closeKeyboard()), parent, SLOT(openSidebar()));
+#endif
   return w;
 }
 
@@ -271,12 +316,12 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
     QPushButton *btn = new QPushButton(panel.first);
     btn->setCheckable(true);
     btn->setStyleSheet(R"(
-      QPushButton {
+      * {
         color: grey;
         border: none;
         background: none;
         font-size: 65px;
-        font-weight: bold;
+        font-weight: 500;
         padding-top: 35px;
         padding-bottom: 35px;
       }
@@ -326,12 +371,4 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
       background-color: black;
     }
   )");
-}
-
-void SettingsWindow::closeSidebar() {
-  sidebar_widget->setFixedWidth(0);
-}
-
-void SettingsWindow::openSidebar() {
-  sidebar_widget->setFixedWidth(500);
 }

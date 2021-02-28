@@ -44,8 +44,9 @@ keys = {
   b"IsUpdateAvailable": [TxType.CLEAR_ON_MANAGER_START],
   b"IsUploadRawEnabled": [TxType.PERSISTENT],
   b"LastAthenaPingTime": [TxType.PERSISTENT],
-  b"LastUpdateTime": [TxType.PERSISTENT],
+  b"LastGPSPosition": [TxType.PERSISTENT],
   b"LastUpdateException": [TxType.PERSISTENT],
+  b"LastUpdateTime": [TxType.PERSISTENT],
   b"LiveParameters": [TxType.PERSISTENT],
   b"OpenpilotEnabledToggle": [TxType.PERSISTENT],
   b"LaneChangeEnabled": [TxType.PERSISTENT],
@@ -57,7 +58,9 @@ keys = {
   b"ReleaseNotes": [TxType.PERSISTENT],
   b"ShouldDoUpdate": [TxType.CLEAR_ON_MANAGER_START],
   b"SubscriberInfo": [TxType.PERSISTENT],
+  b"SshEnabled": [TxType.PERSISTENT],
   b"TermsVersion": [TxType.PERSISTENT],
+  b"Timezone": [TxType.PERSISTENT],
   b"TrainingVersion": [TxType.PERSISTENT],
   b"UpdateAvailable": [TxType.CLEAR_ON_MANAGER_START],
   b"UpdateFailedCount": [TxType.CLEAR_ON_MANAGER_START],
@@ -73,6 +76,7 @@ keys = {
   b"Offroad_NeosUpdate": [TxType.CLEAR_ON_MANAGER_START],
   b"Offroad_UpdateFailed": [TxType.CLEAR_ON_MANAGER_START],
   b"Offroad_HardwareUnsupported": [TxType.CLEAR_ON_MANAGER_START],
+  b"ForcePowerDown": [TxType.CLEAR_ON_MANAGER_START],
 }
 
 def ensure_bytes(v):

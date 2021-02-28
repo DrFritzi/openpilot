@@ -91,8 +91,6 @@ typedef struct CameraState {
 
   StreamState ss[3];
 
-  uint64_t last_t;
-
   camera_apply_exposure_func apply_exposure;
 
   int16_t focus[NUM_FOCUS];
@@ -129,19 +127,13 @@ typedef struct MultiCameraState {
   cl_program prg_rgb_laplacian;
   cl_kernel krnl_rgb_laplacian;
 
-  CameraState rear;
-  CameraState front;
+  CameraState road_cam;
+  CameraState driver_cam;
 
-  SubMaster *sm_front;
+  SubMaster *sm;
   PubMaster *pm;
 
 } MultiCameraState;
 
-void cameras_init(VisionIpcServer *v, MultiCameraState *s, cl_device_id device_id, cl_context ctx);
-void cameras_open(MultiCameraState *s);
-void cameras_run(MultiCameraState *s);
-void cameras_close(MultiCameraState *s);
-
-void camera_autoexposure(CameraState *s, float grey_frac);
 void actuator_move(CameraState *s, uint16_t target);
 int sensor_write_regs(CameraState *s, struct msm_camera_i2c_reg_array* arr, size_t size, int data_type);

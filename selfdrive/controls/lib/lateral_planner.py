@@ -82,8 +82,8 @@ class LateralPlanner():
   def update(self, sm, CP, VM):
     v_ego = sm['carState'].vEgo
     active = sm['controlsState'].active
-    steering_wheel_angle_offset_deg = sm['liveParameters'].angleOffset
-    steering_wheel_angle_deg = sm['carState'].steeringAngle
+    steering_wheel_angle_offset_deg = sm['liveParameters'].angleOffsetDeg
+    steering_wheel_angle_deg = sm['carState'].steeringAngleDeg
 
     # Update vehicle model
     x = max(sm['liveParameters'].stiffnessFactor, 0.1)
@@ -170,11 +170,10 @@ class LateralPlanner():
     heading_pts = np.interp(v_ego * self.t_idxs[:MPC_N+1], np.linalg.norm(self.path_xyz, axis=1), self.plan_yaw)
     self.y_pts = y_pts
 
-    v_ego_mpc = max(v_ego, 5.0)  # avoid mpc roughness due to low speed
     assert len(y_pts) == MPC_N + 1
     assert len(heading_pts) == MPC_N + 1
     self.libmpc.run_mpc(self.cur_state, self.mpc_solution,
-                        float(v_ego_mpc),
+                        float(v_ego),
                         CAR_ROTATION_RADIUS,
                         list(y_pts),
                         list(heading_pts))
@@ -186,16 +185,15 @@ class LateralPlanner():
 
     # TODO this needs more thought, use .2s extra for now to estimate other delays
     delay = CP.steerActuatorDelay + .2
-    next_curvature = interp(DT_MDL + delay, self.t_idxs[:MPC_N+1], self.mpc_solution.curvature)
+    current_curvature = self.mpc_solution.curvature[0]
+    psi = interp(delay, self.t_idxs[:MPC_N+1], self.mpc_solution.psi)
     next_curvature_rate = self.mpc_solution.curvature_rate[0]
 
-    # TODO This gets around the fact that MPC can plan to turn and turn back in the
-    # time between now and delay, need better abstraction between planner and controls
-    plan_ahead_idx = sum(self.t_idxs < delay)
-    if next_curvature_rate > 0:
-      next_curvature = max(list(self.mpc_solution.curvature)[:plan_ahead_idx] + [next_curvature])
-    else:
-      next_curvature = min(list(self.mpc_solution.curvature)[:plan_ahead_idx] + [next_curvature])
+    # MPC can plan to turn the wheel and turn back before t_delay. This means
+    # in high delay cases some corrections never even get commanded. So just use
+    # psi to calculate a simple linearization of desired curvature
+    curvature_diff_from_psi = psi/(max(v_ego, 1e-1) * delay) - current_curvature
+    next_curvature = current_curvature + 2*curvature_diff_from_psi
 
     # reset to current steer angle if not active or overriding
     if active:
@@ -235,9 +233,9 @@ class LateralPlanner():
     plan_send.lateralPlan.rProb = float(self.LP.rll_prob)
     plan_send.lateralPlan.dProb = float(self.LP.d_prob)
 
-    plan_send.lateralPlan.angleSteers = float(self.desired_steering_wheel_angle_deg)
-    plan_send.lateralPlan.rateSteers = float(self.desired_steering_wheel_angle_rate_deg)
-    plan_send.lateralPlan.angleOffset = float(sm['liveParameters'].angleOffsetAverage)
+    plan_send.lateralPlan.steeringAngleDeg = float(self.desired_steering_wheel_angle_deg)
+    plan_send.lateralPlan.steeringRateDeg = float(self.desired_steering_wheel_angle_rate_deg)
+    plan_send.lateralPlan.angleOffsetDeg = float(sm['liveParameters'].angleOffsetAverageDeg)
     plan_send.lateralPlan.mpcSolutionValid = bool(plan_solution_valid)
 
     plan_send.lateralPlan.desire = self.desire

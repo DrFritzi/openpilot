@@ -1,4 +1,3 @@
-#include <QDebug>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -24,7 +23,7 @@ SSH::SSH(QWidget* parent) : QWidget(parent){
   networkTimer->setInterval(5000);
   connect(networkTimer, SIGNAL(timeout()), this, SLOT(timeout()));
 
-
+  dialog = new InputDialog("");
   // Construct the layouts to display
   slayout = new QStackedLayout(this); // Initial screen, input, waiting for response
 
@@ -53,11 +52,9 @@ SSH::SSH(QWidget* parent) : QWidget(parent){
 
   slayout->addWidget(layout_to_widget(initialLayout));
 
-  InputField* input = new InputField;
-  slayout->addWidget(input);
-
   QLabel* loading = new QLabel("Loading SSH keys from GitHub.");
   slayout->addWidget(loading);
+
   setStyleSheet(R"(
     QPushButton {
       font-size: 60px;
@@ -77,8 +74,8 @@ SSH::SSH(QWidget* parent) : QWidget(parent){
   QState* initialStateNoGithub = new QState(); //Starting state, key not connected
   QState* initialStateConnected = new QState(); //Starting state, ssh connected
   QState* quitState = new QState(); // State when exiting the widget
-  QState* removeSSH_State = new QState(); // State when user wants to remove the SSH keys 
-  QState* defaultInputFieldState = new QState(); // State when we want the user to give us the username 
+  QState* removeSSH_State = new QState(); // State when user wants to remove the SSH keys
+  QState* defaultInputFieldState = new QState(); // State when we want the user to give us the username
   QState* loadingState = new QState(); // State while waiting for the network response
 
 
@@ -87,8 +84,8 @@ SSH::SSH(QWidget* parent) : QWidget(parent){
   connect(initialState, &QState::entered, [=](){checkForSSHKey(); slayout->setCurrentIndex(0);});
   initialState->addTransition(this, &SSH::NoSSHAdded, initialStateNoGithub);
   initialState->addTransition(this, &SSH::SSHAdded, initialStateConnected);
-  
-  
+
+
   state->addState(quitState);
   connect(quitState, &QState::entered, [=](){emit closeSSHSettings();});
   quitState->addTransition(quitState, &QState::entered, initialState);
@@ -106,17 +103,18 @@ SSH::SSH(QWidget* parent) : QWidget(parent){
   connect(initialStateNoGithub, &QState::entered, [=](){actionButton->setText("Link GitHub SSH keys"); actionButton->setStyleSheet(R"(background-color: #444444;)");});
   initialStateNoGithub->addTransition(exitButton, &QPushButton::released, quitState);
   initialStateNoGithub->addTransition(actionButton, &QPushButton::released, defaultInputFieldState);
-  connect(actionButton, &QPushButton::released, [=](){input->setPromptText("Enter your GitHub username");});
+  connect(actionButton, &QPushButton::released, [=](){dialog->setMessage("Enter your GitHub username");});
 
   state->addState(defaultInputFieldState);
-  connect(defaultInputFieldState, &QState::entered, [=](){slayout->setCurrentIndex(1);});
-  connect(input, &InputField::emitText, [=](QString a){usernameGitHub = a;}); // Store the string the user provided
-  defaultInputFieldState->addTransition(input, &InputField::cancel, initialState);
-  defaultInputFieldState->addTransition(input, &InputField::emitText, loadingState);
+  connect(defaultInputFieldState, &QState::entered, [=](){dialog->show();});
+  connect(dialog, &InputDialog::emitText, [=](QString a){usernameGitHub = a;});
+  defaultInputFieldState->addTransition(dialog, &InputDialog::cancel, initialState);
+  defaultInputFieldState->addTransition(dialog, &InputDialog::emitText, loadingState);
+
 
   state->addState(loadingState);
-  connect(loadingState, &QState::entered, [=](){slayout->setCurrentIndex(2); getSSHKeys();});
-  connect(this, &SSH::failedResponse, [=](QString message){input->setPromptText(message);});
+  connect(loadingState, &QState::entered, [=](){slayout->setCurrentIndex(1); getSSHKeys();});
+  connect(this, &SSH::failedResponse, [=](QString message){dialog->setMessage(message);});
   loadingState->addTransition(this, &SSH::failedResponse, defaultInputFieldState);
   loadingState->addTransition(this, &SSH::gotSSHKeys, initialState);
 
@@ -154,12 +152,14 @@ void SSH::parseResponse(){
     if (reply->error() == QNetworkReply::NoError && response.length()) {
       Params().write_db_value("GithubSshKeys", response.toStdString());
       emit gotSSHKeys();
+    } else if(reply->error() == QNetworkReply::NoError){
+      emit failedResponse("Username " + usernameGitHub + " has no keys on GitHub");
     } else {
-      emit failedResponse("Username "+usernameGitHub+" doesn't exist");
+      emit failedResponse("Username " + usernameGitHub + " doesn't exist");
     }
   }else{
     emit failedResponse("Request timed out");
   }
   reply->deleteLater();
-  reply = NULL;
+  reply = nullptr;
 }
