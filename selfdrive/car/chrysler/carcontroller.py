@@ -30,7 +30,7 @@ class CarController():
     self.steer_rate_limited = new_steer != apply_steer
 
     if enabled:
-      if self.timer < 99:
+      if self.timer < 99 and CS.out.vEgo < 18.:
         self.timer += 1
       else:
         self.timer = 99
