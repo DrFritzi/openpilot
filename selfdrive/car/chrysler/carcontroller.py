@@ -12,7 +12,8 @@ class CarController():
     self.hud_count = 0
     self.car_fingerprint = CP.carFingerprint
     self.steer_rate_limited = False
-    self.timer = 0;
+    self.timer = 0
+    self.steerErrorMod = False
 
     self.packer = CANPacker(dbc_name)
 
@@ -52,7 +53,7 @@ class CarController():
 
     if self.steer_type != 2:
       self.steerErrorMod = CS.steerError
-        
+
     self.apply_steer_last = apply_steer
 
     can_sends = []
