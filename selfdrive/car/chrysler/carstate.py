@@ -56,6 +56,8 @@ class CarState(CarStateBase):
     ret.steeringTorqueEps = cp.vl["EPS_STATUS"]["TORQUE_MOTOR"]
     ret.steeringPressed = abs(ret.steeringTorque) > STEER_THRESHOLD
     self.steerError = cp.vl["EPS_STATUS"]["LKAS_STATE"] == 4
+    self.apaFault = cp.vl["EPS_STATUS"]["APA_STEER_FAULT"] == 1
+    self.apasteerOn = cp.vl["EPS_STATUS"]["AUTO_PARK_HAS_CONTROL_2"] == 1
 
     ret.genericToggle = bool(cp.vl["STEERING_LEVERS"]['HIGH_BEAM_FLASH'])
 
@@ -95,6 +97,8 @@ class CarState(CarStateBase):
       ("COUNTER", "EPS_STATUS", -1),
       ("TRACTION_OFF", "TRACTION_BUTTON", 0),
       ("SEATBELT_DRIVER_UNLATCHED", "SEATBELT_STATUS", 0),
+      ("AUTO_PARK_HAS_CONTROL_2", "EPS_STATUS", 1),
+      ("APA_STEER_FAULT", "EPS_STATUS", 1),
     ]
 
     checks = [

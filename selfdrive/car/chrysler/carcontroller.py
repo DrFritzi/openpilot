@@ -3,6 +3,8 @@ from selfdrive.car.chrysler.chryslercan import create_lkas_hud, create_lkas_comm
                                                create_wheel_buttons
 from selfdrive.car.chrysler.values import CAR, CarControllerParams
 from opendbc.can.packer import CANPacker
+from selfdrive.car.interfaces import GearShifter
+
 
 class CarController():
   def __init__(self, dbc_name, CP, VM):
@@ -14,6 +16,7 @@ class CarController():
     self.steer_rate_limited = False
     self.timer = 0
     self.steerErrorMod = False
+    self.time_after_on = 0
 
     self.packer = CANPacker(dbc_name)
 
@@ -31,8 +34,13 @@ class CarController():
     self.steer_rate_limited = new_steer != apply_steer
 
     wp_speed = 180.
+    self.time_after_on += 1
     wp_type = int(2)
-    on = True #enabled
+    on = self.time_after_on > 100
+
+    if CS.out.gearShifter == GearShifter.park:
+      self.time_after_on = 0
+
     if on:
       if self.timer < 99 and CS.out.vEgo < wp_speed:
         self.timer += 1
@@ -56,6 +64,8 @@ class CarController():
 
     self.apply_steer_last = apply_steer
 
+    self.apaActive = CS.apasteerOn and self.steer_type == 2
+
     can_sends = []
 
     #*** control msgs ***
@@ -70,7 +80,7 @@ class CarController():
     if (self.ccframe % 25 == 0):  # 0.25s period
       if (CS.lkas_car_model != -1):
         new_msg = create_lkas_hud(
-            self.packer, CS.out.gearShifter, lkas_active, hud_alert, on,
+            self.packer, CS.out.gearShifter, self.apaActive, CS.apaFault, hud_alert, on,
             self.hud_count, CS.lkas_car_model, self.steer_type)
         can_sends.append(new_msg)
         self.hud_count += 1

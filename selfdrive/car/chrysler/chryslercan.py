@@ -5,7 +5,7 @@ from selfdrive.car import make_can_msg
 GearShifter = car.CarState.GearShifter
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 
-def create_lkas_hud(packer, gear, lkas_active, hud_alert, enabled, hud_count, lkas_car_model, steer_type):
+def create_lkas_hud(packer, gear, apa_active, apa_fault, hud_alert, enabled, hud_count, lkas_car_model, steer_type):
   # LKAS_HUD 0x2a6 (678) Controls what lane-keeping icon is displayed.
 
   if hud_alert == VisualAlert.steerRequired:
@@ -21,12 +21,14 @@ def create_lkas_hud(packer, gear, lkas_active, hud_alert, enabled, hud_count, lk
   # CAR.PACIFICA_2018_HYBRID and CAR.PACIFICA_2019_HYBRID
   # had color = 1 and lines = 1 but trying 2017 hybrid style for now.
   if gear in (GearShifter.drive, GearShifter.reverse, GearShifter.low):
-    if enabled:
+    if enabled and apa_active:
       color = 2  # control active, display green.
       lines = 6
     else:
       color = 1  # control off, display white.
       lines = 1
+  if apa_fault:
+    color = 3
 
   values = {
     "LKAS_ICON_COLOR": color,  # byte 0, last 2 bits
