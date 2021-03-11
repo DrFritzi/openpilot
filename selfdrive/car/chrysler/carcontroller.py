@@ -31,7 +31,8 @@ class CarController():
 
     wp_speed = 180.
     wp_type = int(2)
-    if enabled:
+    on = enabled
+    if on:
       if self.timer < 99 and CS.out.vEgo < wp_speed:
         self.timer += 1
       else:
@@ -44,7 +45,7 @@ class CarController():
     if not lkas_active:
       apply_steer = 0
 
-    if enabled and CS.out.vEgo < wp_speed:
+    if on and CS.out.vEgo < wp_speed:
       self.steer_type = wp_type
     else:
       self.steer_type = int(0)
@@ -65,7 +66,7 @@ class CarController():
     if (self.ccframe % 25 == 0):  # 0.25s period
       if (CS.lkas_car_model != -1):
         new_msg = create_lkas_hud(
-            self.packer, CS.out.gearShifter, lkas_active, hud_alert, enabled,
+            self.packer, CS.out.gearShifter, lkas_active, hud_alert, on,
             self.hud_count, CS.lkas_car_model, self.steer_type)
         can_sends.append(new_msg)
         self.hud_count += 1
