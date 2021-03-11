@@ -29,8 +29,10 @@ class CarController():
                                                    CS.out.steeringTorqueEps, CarControllerParams)
     self.steer_rate_limited = new_steer != apply_steer
 
+    wp_speed = 180.
+    wp_type = int(2)
     if enabled:
-      if self.timer < 99 and CS.out.vEgo < 18.:
+      if self.timer < 99 and CS.out.vEgo < wp_speed:
         self.timer += 1
       else:
         self.timer = 99
@@ -42,10 +44,8 @@ class CarController():
     if not lkas_active:
       apply_steer = 0
 
-    if enabled and CS.out.vEgo < 18.:
-      self.steer_type = int(1)
-    #if 1==1:
-    #  self.steer_type = int(2)
+    if enabled and CS.out.vEgo < wp_speed:
+      self.steer_type = wp_type
     else:
       self.steer_type = int(0)
 
