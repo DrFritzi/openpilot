@@ -54,7 +54,7 @@ class CarController():
     if not lkas_active:
       apply_steer = 0
 
-    if on and CS.out.vEgo < wp_speed:
+    if on and CS.out.vEgo < wp_speed and not CS.apaFault:
       self.steer_type = wp_type
     else:
       self.steer_type = int(0)
