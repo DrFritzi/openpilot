@@ -31,7 +31,7 @@ class CarController():
 
     wp_speed = 180.
     wp_type = int(2)
-    on = enabled
+    on = True #enabled
     if on:
       if self.timer < 99 and CS.out.vEgo < wp_speed:
         self.timer += 1
