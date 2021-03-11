@@ -59,7 +59,7 @@ class CarController():
     else:
       self.steer_type = int(0)
 
-    if self.steer_type != 2:
+    if on and self.steer_type != 2:
       self.steerErrorMod = CS.steerError
 
     self.apply_steer_last = apply_steer
