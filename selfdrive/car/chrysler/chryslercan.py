@@ -24,9 +24,6 @@ def create_lkas_hud(packer, gear, apa_active, apa_fault, hud_alert, enabled, hud
     if enabled and apa_active:
       color = 2  # control active, display green.
       lines = 6
-    else:
-      color = 1  # control off, display white.
-      lines = 1
   if apa_fault:
     color = 3
 

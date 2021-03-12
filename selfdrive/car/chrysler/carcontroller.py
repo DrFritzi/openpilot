@@ -77,7 +77,7 @@ class CarController():
 
     # LKAS_HEARTBIT is forwarded by Panda so no need to send it here.
     # frame is 100Hz (0.01s period)
-    if (self.ccframe % 25 == 0):  # 0.25s period
+    if (self.ccframe % 2 == 0):  # 0.25s period
       if (CS.lkas_car_model != -1):
         new_msg = create_lkas_hud(
             self.packer, CS.out.gearShifter, self.apaActive, CS.apaFault, hud_alert, on,
