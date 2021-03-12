@@ -129,7 +129,7 @@ class LatControlINDI():
       else:
         self.output_steer = self.delayed_output + delta_u
 
-      steers_max = get_steer_max(CP, CS.vEgo)
+      steers_max = float(CarControllerParams.STEER_MAX)#get_steer_max(CP, CS.vEgo)
       self.output_steer = clip(self.output_steer, -steers_max, steers_max)
 
       indi_log.active = True
