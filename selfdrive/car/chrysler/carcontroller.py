@@ -38,7 +38,7 @@ class CarController():
     wp_type = int(2)
     on = self.time_after_on > 100
 
-    if CS.out.gearShifter == GearShifter.park:
+    if CS.out.gearShifter == GearShifter.park or CS.out.gearShifter == GearShifter.reverse:
       self.time_after_on = 0
 
     if on:
