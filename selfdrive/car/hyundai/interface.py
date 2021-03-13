@@ -223,7 +223,7 @@ class CarInterface(CarInterfaceBase):
         ret.lateralTuning.indi.actuatorEffectiveness = 1.75 #1.85 -> more ping pong on straights | 1.70 -> worse curve behaviour?
         ret.steerActuatorDelay = 0.08 #default -> cuts curves | 0.08 -> cuts curves very little
         ret.steerRatio = 13.73
-        ret.mass = 1500. + STD_CARGO_KG
+        ret.mass = 1950. + STD_CARGO_KG
       ret.wheelbase = 2.7
       tire_stiffness_factor = 0.385
     elif candidate in [CAR.CADENZA, CAR.CADENZA_HEV]:
