@@ -10,13 +10,6 @@
 #include "ui.hpp"
 #include "paint.hpp"
 
-
-int write_param_float(float param, const char* param_name, bool persistent_param) {
-  char s[16];
-  int size = snprintf(s, sizeof(s), "%f", param);
-  return Params(persistent_param).write_db_value(param_name, s, size < sizeof(s) ? size : sizeof(s));
-}
-
 // Projects a point in car to space to the corresponding point in full frame
 // image space.
 static bool calib_frame_to_full_frame(const UIState *s, float in_x, float in_y, float in_z, vertex_data *out) {
@@ -54,13 +47,16 @@ static void ui_init_vision(UIState *s) {
 
 
 void ui_init(UIState *s) {
-  s->sm = new SubMaster({"modelV2", "controlsState", "uiLayoutState", "liveCalibration", "radarState", "deviceState", "roadCameraState", "liveLocationKalman",
-                         "pandaState", "carParams", "driverState", "driverMonitoringState", "sensorEvents", "carState", "ubloxGnss"});
+  s->sm = new SubMaster({
+    "modelV2", "controlsState", "liveCalibration", "radarState", "deviceState", "liveLocationKalman",
+    "pandaState", "carParams", "driverState", "driverMonitoringState", "sensorEvents", "carState", "ubloxGnss",
+#ifdef QCOM2
+    "roadCameraState",
+#endif
+  });
 
   s->scene.started = false;
   s->status = STATUS_OFFROAD;
-
-  s->fb = std::make_unique<FrameBuffer>("ui", 0, true, &s->fb_w, &s->fb_h);
 
   ui_nvg_init(s);
 
@@ -79,25 +75,24 @@ static int get_path_length_idx(const cereal::ModelDataV2::XYZTData::Reader &line
   return max_idx;
 }
 
-static void update_lead(UIState *s, const cereal::RadarState::Reader &radar_state,
-                        const cereal::ModelDataV2::XYZTData::Reader &line, int idx) {
-  auto &lead_data = s->scene.lead_data[idx];
-  lead_data = (idx == 0) ? radar_state.getLeadOne() : radar_state.getLeadTwo();
-  if (lead_data.getStatus()) {
-    const int path_idx = get_path_length_idx(line, lead_data.getDRel());
-    // negative because radarState uses left positive convention
-    calib_frame_to_full_frame(s, lead_data.getDRel(), -lead_data.getYRel(), line.getZ()[path_idx] + 1.22, &s->scene.lead_vertices[idx]);
+static void update_leads(UIState *s, const cereal::RadarState::Reader &radar_state, std::optional<cereal::ModelDataV2::XYZTData::Reader> line) {
+  for (int i = 0; i < 2; ++i) {
+    auto lead_data = (i == 0) ? radar_state.getLeadOne() : radar_state.getLeadTwo();
+    if (lead_data.getStatus()) {
+      float z = line ? (*line).getZ()[get_path_length_idx(*line, lead_data.getDRel())] : 0.0;
+      // negative because radarState uses left positive convention
+      calib_frame_to_full_frame(s, lead_data.getDRel(), -lead_data.getYRel(), z + 1.22, &s->scene.lead_vertices[i]);
+    }
+    s->scene.lead_data[i] = lead_data;
   }
 }
 
 static void update_line_data(const UIState *s, const cereal::ModelDataV2::XYZTData::Reader &line,
-                             float y_off, float z_off, line_vertices_data *pvd, float max_distance) {
+                             float y_off, float z_off, line_vertices_data *pvd, int max_idx) {
   const auto line_x = line.getX(), line_y = line.getY(), line_z = line.getZ();
-  int max_idx = -1;
   vertex_data *v = &pvd->v[0];
-  for (int i = 0; ((i < TRAJECTORY_SIZE) and (line_x[i] < fmax(MIN_DRAW_DISTANCE, max_distance))); i++) {
+  for (int i = 0; i <= max_idx; i++) {
     v += calib_frame_to_full_frame(s, line_x[i], line_y[i] - y_off, line_z[i] + z_off, v);
-    max_idx = i;
   }
   for (int i = max_idx; i >= 0; i--) {
     v += calib_frame_to_full_frame(s, line_x[i], line_y[i] + y_off, line_z[i] + z_off, v);
@@ -108,13 +103,17 @@ static void update_line_data(const UIState *s, const cereal::ModelDataV2::XYZTDa
 
 static void update_model(UIState *s, const cereal::ModelDataV2::Reader &model) {
   UIScene &scene = s->scene;
-  const float max_distance = fmin(model.getPosition().getX()[TRAJECTORY_SIZE - 1], MAX_DRAW_DISTANCE);
+  auto model_position = model.getPosition();
+  float max_distance = std::clamp(model_position.getX()[TRAJECTORY_SIZE - 1],
+                                  MIN_DRAW_DISTANCE, MAX_DRAW_DISTANCE);
+
   // update lane lines
   const auto lane_lines = model.getLaneLines();
   const auto lane_line_probs = model.getLaneLineProbs();
+  int max_idx = get_path_length_idx(lane_lines[0], max_distance);
   for (int i = 0; i < std::size(scene.lane_line_vertices); i++) {
     scene.lane_line_probs[i] = lane_line_probs[i];
-    update_line_data(s, lane_lines[i], 0.025 * scene.lane_line_probs[i], 0, &scene.lane_line_vertices[i], max_distance);
+    update_line_data(s, lane_lines[i], 0.025 * scene.lane_line_probs[i], 0, &scene.lane_line_vertices[i], max_idx);
   }
 
   // update road edges
@@ -122,14 +121,16 @@ static void update_model(UIState *s, const cereal::ModelDataV2::Reader &model) {
   const auto road_edge_stds = model.getRoadEdgeStds();
   for (int i = 0; i < std::size(scene.road_edge_vertices); i++) {
     scene.road_edge_stds[i] = road_edge_stds[i];
-    update_line_data(s, road_edges[i], 0.025, 0, &scene.road_edge_vertices[i], max_distance);
+    update_line_data(s, road_edges[i], 0.025, 0, &scene.road_edge_vertices[i], max_idx);
   }
 
   // update path
-  const float lead_d = scene.lead_data[0].getStatus() ? scene.lead_data[0].getDRel() * 2. : MAX_DRAW_DISTANCE;
-  float path_length = (lead_d > 0.) ? lead_d - fmin(lead_d * 0.35, 10.) : MAX_DRAW_DISTANCE;
-  path_length = fmin(path_length, max_distance);
-  update_line_data(s, model.getPosition(), 0.5, 1.22, &scene.track_vertices, path_length);
+  if (scene.lead_data[0].getStatus()) {
+    const float lead_d = scene.lead_data[0].getDRel() * 2.;
+    max_distance = std::clamp((float)(lead_d - fmin(lead_d * 0.35, 10.)), 0.0f, max_distance);
+  }
+  max_idx = get_path_length_idx(model_position, max_distance);
+  update_line_data(s, model_position, 0.5, 1.22, &scene.track_vertices, max_idx);
 }
 
 static void update_sockets(UIState *s) {
@@ -144,10 +145,11 @@ static void update_sockets(UIState *s) {
     scene.car_state = sm["carState"].getCarState();
   }
   if (sm.updated("radarState")) {
-    auto radar_state = sm["radarState"].getRadarState();
-    const auto line = sm["modelV2"].getModelV2().getPosition();
-    update_lead(s, radar_state, line, 0);
-    update_lead(s, radar_state, line, 1);
+    std::optional<cereal::ModelDataV2::XYZTData::Reader> line;
+    if (sm.rcv_frame("modelV2") > 0) {
+      line = sm["modelV2"].getModelV2().getPosition();
+    }
+    update_leads(s, sm["radarState"].getRadarState(), line);
   }
   if (sm.updated("liveCalibration")) {
     scene.world_objects_visible = true;
@@ -168,11 +170,6 @@ static void update_sockets(UIState *s) {
   }
   if (sm.updated("modelV2")) {
     update_model(s, sm["modelV2"].getModelV2());
-  }
-  if (sm.updated("uiLayoutState")) {
-    auto data = sm["uiLayoutState"].getUiLayoutState();
-    s->active_app = data.getActiveApp();
-    s->sidebar_collapsed = data.getSidebarCollapsed();
   }
   if (sm.updated("deviceState")) {
     scene.deviceState = sm["deviceState"].getDeviceState();
@@ -201,16 +198,13 @@ static void update_sockets(UIState *s) {
   }
   if (sm.updated("driverMonitoringState")) {
     scene.dmonitoring_state = sm["driverMonitoringState"].getDriverMonitoringState();
-    if(!scene.driver_view && !scene.ignition) {
-      read_param(&scene.driver_view, "IsDriverViewEnabled");
-    }
-  } else if ((sm.frame - sm.rcv_frame("driverMonitoringState")) > UI_FREQ/2) {
-    scene.driver_view = false;
   }
   if (sm.updated("sensorEvents")) {
     for (auto sensor : sm["sensorEvents"].getSensorEvents()) {
       if (sensor.which() == cereal::SensorEventData::LIGHT) {
+#ifndef QCOM2
         scene.light_sensor = sensor.getLight();
+#endif
       } else if (!scene.started && sensor.which() == cereal::SensorEventData::ACCELERATION) {
         auto accel = sensor.getAcceleration().getV();
         if (accel.totalSize().wordCount){ // TODO: sometimes empty lists are received. Figure out why
@@ -224,6 +218,13 @@ static void update_sockets(UIState *s) {
       }
     }
   }
+#ifdef QCOM2
+  if (sm.updated("roadCameraState")) {
+    auto camera_state = sm["roadCameraState"].getRoadCameraState();
+    float gain = camera_state.getGainFrac() * (camera_state.getGlobalGain() > 100 ? 2.5 : 1.0) / 10.0;
+    scene.light_sensor = std::clamp<float>((1023.0 / 1757.0) * (1757.0 - camera_state.getIntegLines()) * (1.0 - gain), 0.0, 1023.0);
+  }
+#endif
   scene.started = scene.deviceState.getStarted() || scene.driver_view;
 }
 
@@ -271,14 +272,13 @@ static void update_alert(UIState *s) {
 static void update_params(UIState *s) {
   const uint64_t frame = s->sm->frame;
   UIScene &scene = s->scene;
-
+  Params params;
   if (frame % (5*UI_FREQ) == 0) {
-    read_param(&scene.is_metric, "IsMetric");
+    scene.is_metric = params.getBool("IsMetric");
   } else if (frame % (6*UI_FREQ) == 0) {
     scene.athenaStatus = NET_DISCONNECTED;
-    uint64_t last_ping = 0;
-    if (read_param(&last_ping, "LastAthenaPingTime") == 0) {
-      scene.athenaStatus = nanos_since_boot() - last_ping < 70e9 ? NET_CONNECTED : NET_ERROR;
+    if (auto last_ping = params.get<float>("LastAthenaPingTime"); last_ping) {
+      scene.athenaStatus = nanos_since_boot() - *last_ping < 70e9 ? NET_CONNECTED : NET_ERROR;
     }
   }
 }
@@ -321,14 +321,13 @@ static void update_status(UIState *s) {
       s->status = STATUS_DISENGAGED;
       s->scene.started_frame = s->sm->frame;
 
-      read_param(&s->scene.is_rhd, "IsRHD");
-      s->active_app = cereal::UiLayoutState::App::NONE;
+      s->scene.is_rhd = Params().getBool("IsRHD");
+      s->scene.end_to_end = Params().getBool("EndToEndToggle");
       s->sidebar_collapsed = true;
       s->scene.alert_size = cereal::ControlsState::AlertSize::NONE;
       s->vipc_client = s->scene.driver_view ? s->vipc_client_front : s->vipc_client_rear;
     } else {
       s->status = STATUS_OFFROAD;
-      s->active_app = cereal::UiLayoutState::App::HOME;
       s->sidebar_collapsed = false;
       s->sound->stop();
       s->vipc_client->connected = false;

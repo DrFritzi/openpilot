@@ -11,7 +11,6 @@
 #include "paint.hpp"
 #include "sidebar.hpp"
 
-
 // TODO: this is also hardcoded in common/transformations/camera.py
 // TODO: choose based on frame input size
 #ifdef QCOM2
@@ -22,7 +21,7 @@ const float y_offset = 0.0;
 const float zoom = 2.35;
 #endif
 
-static void ui_draw_text(const UIState *s, float x, float y, const char* string, float size, NVGcolor color, const char *font_name){
+static void ui_draw_text(const UIState *s, float x, float y, const char *string, float size, NVGcolor color, const char *font_name) {
   nvgFontFace(s->vg, font_name);
   nvgFontSize(s->vg, size);
   nvgFillColor(s->vg, color);
@@ -51,22 +50,22 @@ static void draw_chevron(UIState *s, float x, float y, float sz, NVGcolor fillCo
   nvgFill(s->vg);
 }
 
-static void ui_draw_circle_image(const UIState *s, int x, int y, int size, const char *image, NVGcolor color, float img_alpha, int img_y = 0) {
-  const int img_size = size * 1.5;
+static void ui_draw_circle_image(const UIState *s, int center_x, int center_y, int radius, const char *image, NVGcolor color, float img_alpha) {
   nvgBeginPath(s->vg);
-  nvgCircle(s->vg, x, y + (bdr_s * 1.5), size);
+  nvgCircle(s->vg, center_x, center_y, radius);
   nvgFillColor(s->vg, color);
   nvgFill(s->vg);
-  ui_draw_image(s, {x - (img_size / 2), img_y ? img_y : y - (size / 4), img_size, img_size}, image, img_alpha);
+  const int img_size = radius * 1.5;
+  ui_draw_image(s, {center_x - (img_size / 2), center_y - (img_size / 2), img_size, img_size}, image, img_alpha);
 }
 
-static void ui_draw_circle_image(const UIState *s, int x, int y, int size, const char *image, bool active) {
+static void ui_draw_circle_image(const UIState *s, int center_x, int center_y, int radius, const char *image, bool active) {
   float bg_alpha = active ? 0.3f : 0.1f;
   float img_alpha = active ? 1.0f : 0.15f;
-  ui_draw_circle_image(s, x, y, size, image, nvgRGBA(0, 0, 0, (255 * bg_alpha)), img_alpha);
+  ui_draw_circle_image(s, center_x, center_y, radius, image, nvgRGBA(0, 0, 0, (255 * bg_alpha)), img_alpha);
 }
 
-static void draw_lead(UIState *s, int idx){
+static void draw_lead(UIState *s, int idx) {
   // Draw lead car indicator
   const auto &lead = s->scene.lead_data[idx];
   auto [x, y] = s->scene.lead_vertices[idx];
@@ -86,7 +85,7 @@ static void draw_lead(UIState *s, int idx){
 
   float sz = std::clamp((25 * 30) / (d_rel / 3 + 30), 15.0f, 30.0f) * zoom;
   x = std::clamp(x, 0.f, s->viz_rect.right() - sz / 2);
-  y = std::fmin(s->viz_rect.bottom() - sz * .6,  y);
+  y = std::fmin(s->viz_rect.bottom() - sz * .6, y);
   draw_chevron(s, x, y, sz, nvgRGBA(201, 34, 49, fillAlpha), COLOR_YELLOW);
 }
 
@@ -134,28 +133,33 @@ static void draw_frame(UIState *s) {
 
   assert(glGetError() == GL_NO_ERROR);
   glEnableVertexAttribArray(0);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, (const void*)0);
+  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, (const void *)0);
   glDisableVertexAttribArray(0);
   glBindVertexArray(0);
 }
 
 static void ui_draw_vision_lane_lines(UIState *s) {
   const UIScene &scene = s->scene;
-  // paint lanelines
-  for (int i = 0; i < std::size(scene.lane_line_vertices); i++) {
-    NVGcolor color = nvgRGBAf(1.0, 1.0, 1.0, scene.lane_line_probs[i]);
-    ui_draw_line(s, scene.lane_line_vertices[i], &color, nullptr);
-  }
+  NVGpaint track_bg;
+  if (!scene.end_to_end) {
+    // paint lanelines
+    for (int i = 0; i < std::size(scene.lane_line_vertices); i++) {
+      NVGcolor color = nvgRGBAf(1.0, 1.0, 1.0, scene.lane_line_probs[i]);
+      ui_draw_line(s, scene.lane_line_vertices[i], &color, nullptr);
+    }
 
-  // paint road edges
-  for (int i = 0; i < std::size(scene.road_edge_vertices); i++) {
-    NVGcolor color = nvgRGBAf(1.0, 0.0, 0.0, std::clamp<float>(1.0 - scene.road_edge_stds[i], 0.0, 1.0));
-    ui_draw_line(s, scene.road_edge_vertices[i], &color, nullptr);
+    // paint road edges
+    for (int i = 0; i < std::size(scene.road_edge_vertices); i++) {
+      NVGcolor color = nvgRGBAf(1.0, 0.0, 0.0, std::clamp<float>(1.0 - scene.road_edge_stds[i], 0.0, 1.0));
+      ui_draw_line(s, scene.road_edge_vertices[i], &color, nullptr);
+    }
+    track_bg = nvgLinearGradient(s->vg, s->fb_w, s->fb_h, s->fb_w, s->fb_h * .4,
+                                          COLOR_WHITE, COLOR_WHITE_ALPHA(0));
+  } else {
+    track_bg = nvgLinearGradient(s->vg, s->fb_w, s->fb_h, s->fb_w, s->fb_h * .4,
+                                          COLOR_RED, COLOR_RED_ALPHA(0));
   }
-
   // paint path
-  NVGpaint track_bg = nvgLinearGradient(s->vg, s->fb_w, s->fb_h, s->fb_w, s->fb_h * .4,
-                                        COLOR_WHITE, COLOR_WHITE_ALPHA(0));
   ui_draw_line(s, scene.track_vertices, nullptr, &track_bg);
 }
 
@@ -209,25 +213,20 @@ static void ui_draw_vision_speed(UIState *s) {
 }
 
 static void ui_draw_vision_event(UIState *s) {
-  const int viz_event_w = 220;
-  const int viz_event_x = s->viz_rect.right() - (viz_event_w + bdr_s*2);
-  const int viz_event_y = s->viz_rect.y + (bdr_s*1.5);
   if (s->scene.controls_state.getEngageable()) {
     // draw steering wheel
-    const int bg_wheel_size = 96;
-    const int bg_wheel_x = viz_event_x + (viz_event_w-bg_wheel_size);
-    const int bg_wheel_y = viz_event_y + (bg_wheel_size/2);
-    const NVGcolor color = bg_colors[s->status];
-
-    ui_draw_circle_image(s, bg_wheel_x, bg_wheel_y, bg_wheel_size, "wheel", color, 1.0f, bg_wheel_y - 25);
+    const int radius = 96;
+    const int center_x = s->viz_rect.right() - radius - bdr_s * 2;
+    const int center_y = s->viz_rect.y + radius  + (bdr_s * 1.5);
+    ui_draw_circle_image(s, center_x, center_y, radius, "wheel", bg_colors[s->status], 1.0f);
   }
 }
 
 static void ui_draw_vision_face(UIState *s) {
-  const int face_size = 96;
-  const int face_x = (s->viz_rect.x + face_size + (bdr_s * 2));
-  const int face_y = (s->viz_rect.bottom() - footer_h + ((footer_h - face_size) / 2));
-  ui_draw_circle_image(s, face_x, face_y, face_size, "driver_face", s->scene.dmonitoring_state.getIsActiveMode());
+  const int radius = 96;
+  const int center_x = s->viz_rect.x + radius + (bdr_s * 2);
+  const int center_y = s->viz_rect.bottom() - footer_h / 2;
+  ui_draw_circle_image(s, center_x, center_y, radius, "driver_face", s->scene.dmonitoring_state.getIsActiveMode());
 }
 
 static void ui_draw_driver_view(UIState *s) {
@@ -267,10 +266,10 @@ static void ui_draw_driver_view(UIState *s) {
   }
 
   // draw face icon
-  const int face_size = 85;
-  const int icon_x = is_rhd ? rect.right() - face_size - bdr_s * 2 : rect.x + face_size + bdr_s * 2;
-  const int icon_y = rect.bottom() - face_size - bdr_s * 2.5;
-  ui_draw_circle_image(s, icon_x, icon_y, face_size, "driver_face", face_detected);
+  const int face_radius = 85;
+  const int center_x = is_rhd ? rect.right() - face_radius - bdr_s * 2 : rect.x + face_radius + bdr_s * 2;
+  const int center_y = rect.bottom() - face_radius - bdr_s * 2.5;
+  ui_draw_circle_image(s, center_x, center_y, face_radius, "driver_face", face_detected);
 }
 
 static void ui_draw_vision_header(UIState *s) {
@@ -306,9 +305,9 @@ static void ui_draw_vision_alert(UIState *s) {
   color.a *= get_alert_alpha(scene->alert_blinking_rate);
   const int alr_h = alert_size_map[scene->alert_size] + bdr_s;
   const Rect rect = {.x = s->viz_rect.x - bdr_s,
-                  .y = s->fb_h - alr_h,
-                  .w = s->viz_rect.w + (bdr_s * 2),
-                  .h = alr_h};
+                     .y = s->fb_h - alr_h,
+                     .w = s->viz_rect.w + (bdr_s * 2),
+                     .h = alr_h};
 
   ui_fill_rect(s->vg, rect, color);
   ui_fill_rect(s->vg, rect, nvgLinearGradient(s->vg, rect.x, rect.y, rect.x, rect.bottom(), 
@@ -375,7 +374,7 @@ void ui_draw(UIState *s) {
     s->viz_rect.w -= sbr_w;
   }
 
-  const bool draw_alerts = s->scene.started && s->active_app == cereal::UiLayoutState::App::NONE;
+  const bool draw_alerts = s->scene.started;
   const bool draw_vision = draw_alerts && s->vipc_client->connected;
 
   // GL drawing functions
@@ -397,11 +396,16 @@ void ui_draw(UIState *s) {
   if (draw_alerts && s->scene.alert_size != cereal::ControlsState::AlertSize::NONE) {
     ui_draw_vision_alert(s);
   }
+
+  if (s->scene.driver_view && !s->vipc_client->connected) {
+    nvgTextAlign(s->vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+    ui_draw_text(s, s->viz_rect.centerX(), s->viz_rect.centerY(), "Please wait for camera to start", 40 * 2.5, COLOR_WHITE, "sans-bold");
+  }
   nvgEndFrame(s->vg);
   glDisable(GL_BLEND);
 }
 
-void ui_draw_image(const UIState *s, const Rect &r, const char *name, float alpha){
+void ui_draw_image(const UIState *s, const Rect &r, const char *name, float alpha) {
   nvgBeginPath(s->vg);
   NVGpaint imgPaint = nvgImagePattern(s->vg, r.x, r.y, r.w, r.h, 0, s->images.at(name), alpha);
   nvgRect(s->vg, r.x, r.y, r.w, r.h);
@@ -419,7 +423,7 @@ void ui_draw_rect(NVGcontext *vg, const Rect &r, NVGcolor color, int width, floa
 
 static inline void fill_rect(NVGcontext *vg, const Rect &r, const NVGcolor *color, const NVGpaint *paint, float radius) {
   nvgBeginPath(vg);
-  radius > 0? nvgRoundedRect(vg, r.x, r.y, r.w, r.h, radius) : nvgRect(vg, r.x, r.y, r.w, r.h);
+  radius > 0 ? nvgRoundedRect(vg, r.x, r.y, r.w, r.h, radius) : nvgRect(vg, r.x, r.y, r.w, r.h);
   if (color) nvgFillColor(vg, *color);
   if (paint) nvgFillPaint(vg, *paint);
   nvgFill(vg);
@@ -427,7 +431,7 @@ static inline void fill_rect(NVGcontext *vg, const Rect &r, const NVGcolor *colo
 void ui_fill_rect(NVGcontext *vg, const Rect &r, const NVGcolor &color, float radius) {
   fill_rect(vg, r, &color, nullptr, radius);
 }
-void ui_fill_rect(NVGcontext *vg, const Rect &r, const NVGpaint &paint, float radius){
+void ui_fill_rect(NVGcontext *vg, const Rect &r, const NVGpaint &paint, float radius) {
   fill_rect(vg, r, nullptr, &paint, radius);
 }
 
@@ -547,7 +551,7 @@ void ui_nvg_init(UIState *s) {
 
   assert(glGetError() == GL_NO_ERROR);
 
-  for(int i = 0; i < 2; i++) {
+  for (int i = 0; i < 2; i++) {
     float x1, x2, y1, y2;
     if (i == 1) {
       // flip horizontally so it looks like a mirror
@@ -583,7 +587,7 @@ void ui_nvg_init(UIState *s) {
     glGenBuffers(1, &s->frame_ibo[i]);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s->frame_ibo[i]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(frame_indicies), frame_indicies, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER,0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
   }
 
