@@ -1,9 +1,10 @@
 from selfdrive.car import apply_toyota_steer_torque_limits
 from selfdrive.car.chrysler.chryslercan import create_lkas_hud, create_lkas_command, \
-                                               create_wheel_buttons
+  create_wheel_buttons, create_apa_hud
 from selfdrive.car.chrysler.values import CAR, CarControllerParams
 from opendbc.can.packer import CANPacker
 from selfdrive.car.interfaces import GearShifter
+from common.params import Params
 
 class CarController():
   def __init__(self, dbc_name, CP, VM):
@@ -28,19 +29,19 @@ class CarController():
       return []
 
     # *** compute control surfaces ***
-    if self.on_timer < 200:
+    if self.on_timer < 200 and CS.veh_on:
       self.on_timer += 1
 
-    spoof_speed = 0.
+    wp_type = int(0)
 
-    if spoof_speed == 65.:
+    if Params().get('LkasFullRangeAvailable') == b'1':
       wp_type = int(1)
-    elif spoof_speed == 0.:
+    if Params().get('ChryslerMangoMode') == b'1':
       wp_type = int(2)
-    else:
-      wp_type = int(0)
 
     if enabled:
+      if CS.out.steeringAngleDeg > 50. and wp_type == 1 and self.timer > 97:
+        self.timer = 97
       if self.timer < 99 and wp_type == 1 and CS.out.vEgo < 65:
         self.timer += 1
       else:
@@ -76,7 +77,8 @@ class CarController():
 
     if wp_type != 2:
       self.steerErrorMod = CS.steerError
-      self.steer_type = int(0)
+      if self.steerErrorMod:
+        self.steer_type = int(0)
     elif CS.apaFault or CS.out.gearShifter not in (GearShifter.drive, GearShifter.low) or \
             abs(CS.out.steeringAngleDeg) > 330. or self.on_timer < 200 or CS.apa_steer_status:
       self.steer_type = int(0)
@@ -94,18 +96,17 @@ class CarController():
 
     # LKAS_HEARTBIT is forwarded by Panda so no need to send it here.
     # frame is 100Hz (0.01s period)
-    #if (self.ccframe % 25 == 0):  # 0.25s period
-    #  if (CS.lkas_car_model != -1):
-    #    new_msg = create_lkas_hud(
-    #        self.packer, CS.out.gearShifter, lkas_active, hud_alert,
-    #        self.hud_count, CS.lkas_car_model)
-    #    can_sends.append(new_msg)
-    #    self.hud_count += 1
-    #new_msg = create_lkas_command(self.packer, int(apply_steer), lkas_active, frame)
-    if (self.ccframe % 2 == 0):  # 0.25s period
+    if (self.ccframe % 2 == 0) and wp_type == 2:  # 0.02s period
+      if (CS.lkas_car_model != -1):
+        new_msg = create_apa_hud(
+            self.packer, CS.out.gearShifter, self.apaActive, CS.apaFault, hud_alert, lkas_active,
+            self.hud_count, CS.lkas_car_model, self.steer_type)
+        can_sends.append(new_msg)
+        self.hud_count += 1
+    if (self.ccframe % 2 == 0) and wp_type != 2:  # 0.25s period
       if (CS.lkas_car_model != -1):
         new_msg = create_lkas_hud(
-            self.packer, CS.out.gearShifter, self.apaActive, CS.apaFault, hud_alert, lkas_active,
+            self.packer, CS.out.gearShifter, lkas_active, hud_alert,
             self.hud_count, CS.lkas_car_model, self.steer_type)
         can_sends.append(new_msg)
         self.hud_count += 1
